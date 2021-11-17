@@ -1,0 +1,590 @@
+---
+title: 'DATA ANALYTICS IN R FOR HEART DISEASE PREDICTION REV 2'
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+```{r}
+
+# Kaggel Competition to predict the heart diseases
+library(ggplot2)
+library(dplyr)
+library(randomForest)
+library(caret)
+library(doSNOW)
+library(e1071)
+# Loading of the data set
+heart <- read.csv("heart.csv", header=TRUE)
+head(heart)
+
+# Checking the structure of the dataset 
+str(heart)
+
+
+
+
+#The variables which contain the values in the form of specific levels are converted into factors. 
+heart$sex <- as.factor(heart$sex)
+heart$cp <- as.factor(heart$cp)
+heart$fbs <- as.factor(heart$fbs)
+heart$restecg <- as.factor(heart$restecg)
+heart$exang <- as.factor(heart$exang)
+heart$slope<- as.factor(heart$slope)
+heart$ca <- as.factor(heart$ca)
+heart$target <- as.factor(heart$target)
+
+
+
+
+# Check the structure of dataset once again
+str(heart)
+
+
+
+# Status of heart disease individuals in the dataset. 
+table(heart$target)
+
+# Ploting of heart diseases status 
+ggplot(heart, aes(x=target))+geom_bar(col="red", fill="blue")+ylab("Number of individuals")+
+    xlab("Heart Diseases 0 (No Heart Diseases), 1(Heart disease)")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="black", size=3)
+    
+
+# Now lets check the age distribution statistics
+summary(heart$ï..age)
+sd(heart$ï..age)
+
+ggplot(heart, aes(x=ï..age))+geom_histogram(bins = 45, binwidth = 2, fill="red", col="black")+
+    xlab("Age of Individuals")+ylab("Total Number of Individuals")+
+    geom_text(stat = "count", aes(label=..count..), color="white", size=4, position = position_stack(1))
+
+# Checking the relationship between age and heart diseases 
+
+ggplot(heart, aes(x=heart$ï..age, fill=target))+geom_bar(col="black")+
+    geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="black", size=3)+
+    xlab("Age of Individuals")+ylab("Number of individuals")+labs(fill="Heart Diseases")
+
+#Subseting Age and Heart Diseases 
+age_diseases <- heart %>% 
+  filter (ï..age > 40 & target==1)
+age_normal <- heart %>%
+  filter(heart$ï..age > 40 & target==0)
+
+table(age_diseases$target)
+table (age_normal$target)
+
+ggplot(age_diseases, aes(x=ï..age, fill=target))+geom_bar(col="black")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="black", size=3)+
+  xlab("Age of Individuals")+ylab("Number of individuals")+labs(fill="Heart Diseases")
+
+ggplot(age_normal, aes(x=ï..age, fill=target))+geom_bar(col="black", fill="green")+
+  xlab("Age of Individuals")+ylab("Number of individuals")+labs(fill="Heart Diseases")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="black", size=3)
+
+# Check the Chest pain parameter now
+str(heart$cp)
+
+# Lets check number of NA in this variable
+is.na(heart$cp)
+
+# Basic statistics of Chest Pain variable
+table(heart$cp)
+
+# Check the relationship between Heart Diseases and Chest pain
+ggplot(heart, aes(x=cp, fill=target))+geom_bar(col="black")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="black", size=4)+
+  xlab("Chest Pain types")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")
+
+# Check the relationshsip between age and chest pain
+ggplot(heart, aes(x=ï..age, fill=cp))+geom_bar(col="black")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="black", size=4)+
+  xlab("Age")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+facet_wrap(~target)
+
+# Lets have some subsetting 
+age_chest_pain <- heart%>%
+  filter(heart$ï..age> 40, cp==0, target==1)
+age_chest_pain
+
+table(age_chest_pain$cp, age_chest_pain$target)
+
+age_chest_pain1<- heart%>%
+  filter(ï..age> 40,cp==1, target==1)
+
+age_chest_pain1
+
+table(age_chest_pain1$target)
+
+age_chest_pain2<- heart%>%
+  filter(ï..age> 40,cp==2, target==1)
+age_chest_pain2
+table(age_chest_pain2$target)
+
+age_chest_pain3<- heart%>%
+  filter(ï..age> 40,cp==3, target==1)
+age_chest_pain3
+table(age_chest_pain3$target)
+
+# Check the resting blood pressure 
+str(heart$trestbps)
+
+# Lets make histogram of the variable 
+ggplot(heart, aes(x=trestbps))+geom_histogram(col="black", fill="red", bins = 40)+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="white", size=2)+
+  xlab("Resting Blood Pressure")+ylab("Total Number of Individuals")
+
+# Lets check the association of heart diseases with resting blood pressure 
+ggplot(heart, aes(x=trestbps, fill=target))+geom_histogram(col="black", bins = 40)+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="white", size=2)+
+  xlab("Resting Blood Pressure")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")
+
+
+# Lets have some total number if resting blood pressure is above 120
+
+resting_bp_diseases <- heart%>%
+                        filter(trestbps > 120, target==1)
+resting_bp_normal <- heart %>% 
+                        filter(trestbps >120, target==0)
+table(resting_bp_diseases$target)
+table(resting_bp_normal$target)
+
+# Lets try to see low bp value association with heart diseases 
+resting_bp_diseases_low <- heart %>%
+                            filter(trestbps<120, target==1)
+table(resting_bp_diseases_low$target)
+
+
+resting_bp_normal_low <- heart%>%
+                          filter(trestbps<120, target==0)
+table(resting_bp_normal_low$target)
+
+
+
+# Previously we have seen that Chest pain type 2 is also linked with heart disease
+# lets try to link it with high and low resting blood pressure 
+
+resting_bp_diseases_low_cp2 <- heart%>%
+                            filter(trestbps < 120, cp==2, target==1)
+table(resting_bp_diseases_low_cp2$target)
+
+resting_bp_normal_low_cp2 <- heart%>%
+                            filter(trestbps < 120, cp==2, target==0)
+table(resting_bp_diseases_low_cp2$target)
+
+
+resting_bp_diseases_high_cp2 <- heart %>%
+                                  filter(trestbps > 120, cp==2, target==1)
+table(resting_bp_diseases_high_cp2$target)
+
+
+resting_bp_normal_high_cp2 <- heart %>%
+                                filter(trestbps > 120, cp==2, target==0)
+table(resting_bp_normal_high_cp2$target)
+
+
+# Now lets try to see serum Cholestrol levels 
+summary(heart$chol)
+sd(heart$chol)
+
+# Lets check its distribution by ploting a histogram
+ggplot(heart, aes(x=chol))+geom_histogram(col="black", fill="red")+
+      xlab("Serum Cholestrol level")+ylab("Total Number of Individuals")
+
+# Lets Check its realtionship with heart diseases 
+ggplot(heart, aes(x=chol, fill=target))+geom_histogram(col="black")+
+       xlab("Serum Cholestrol level")+ylab("Total Number of Individuals")+facet_wrap(~cp)
+
+# Lets get some numbers 
+chol_heart_disease <- heart%>%
+                      filter(chol > 190, target==1)
+ggplot(chol_heart_disease, aes(chol, fill=target))+geom_histogram(col="black")+
+      xlab("Serum Cholestrol level")+ylab("Total Number of Individuals")
+
+table(chol_heart_disease$target)
+
+chol_heart_normal <- heart%>%
+  filter(chol > 190, target==0)
+ggplot(chol_heart_normal, aes(chol, fill=target))+geom_histogram(col="black")+
+  xlab("Serum Cholestrol level")+ylab("Total Number of Individuals")+facet_wrap(~cp)
+
+table(chol_heart_normal$target)
+
+
+# Lets see its relationship with chestPain type 2
+chol_heart_disease_cp <- heart%>%
+  filter(chol > 190, cp==2, target==1)
+ggplot(chol_heart_disease_cp, aes(chol, fill=target))+geom_histogram(col="black")+
+  xlab("Serum Cholestrol level")+ylab("Total Number of Individuals")
+
+table(chol_heart_disease_cp$target)
+
+chol_heart_normal_cp <- heart%>%
+  filter(chol > 190,cp==2, target==0)
+ggplot(chol_heart_normal_cp, aes(chol, fill=target))+geom_histogram(col="black")+
+  xlab("Serum Cholestrol level")+ylab("Total Number of Individuals")
+
+table(chol_heart_normal_cp$target)
+
+
+# Lets see Fasting glucose level now
+str(heart$fbs)
+table(heart$fbs)
+
+#Lets Plot the fasting blood glucose level with diseases status
+ggplot(heart, aes(x=fbs, fill=target))+geom_bar(col="black")+
+      xlab("Diabetic Status")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+
+      geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="white", size=2)
+
+# Lets link this with Chest Pain and sex    
+ggplot(heart, aes(x=fbs, fill=target))+geom_bar(col="black")+
+  xlab("Diabetic Status")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), color="white", size=2)+
+  facet_wrap(~cp+sex)
+
+# Lets link this with Chest Pain and cholestrol  
+ggplot(heart, aes(x=chol, fill=target))+geom_histogram(col="black")+facet_wrap(~fbs+cp)+
+  xlab("Diabetic Status")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+
+      ggtitle("Diabets and CP relationship")
+
+# Now lets move toward resting ECG 
+str(heart$restecg)
+table(heart$restecg)
+
+
+# Lets plot it with disease status
+ggplot(heart, aes(x=restecg, fill=target))+geom_bar(col="black")+
+      xlab("Resting ECG")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+
+      geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), size=4)
+
+
+ggplot(heart, aes(x=restecg, fill=target))+geom_bar(col="black")+
+  xlab("Resting ECG")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+
+  geom_text(stat="count", aes(label=..count..), position = position_stack(0.5), size=4)+
+  facet_wrap(~fbs)
+
+ggplot(heart, aes(x=chol, fill=target))+geom_histogram(col="black")+
+  xlab("Level of Cholestrol")+ylab("Total Number of Individuals")+labs(fill="Heart Diseases")+
+  facet_wrap(~restecg+cp)
+
+# Lets analyze now thalach
+str(heart$thalach)
+summary(heart$thalach)
+
+ggplot(heart, aes(x=thalach, fill=target))+geom_histogram(col="black")+
+      xlab("Thalach number")+ylab("total Number of individuals")+labs(fill="Heart Diseases")
+
+ggplot(heart, aes(x=thalach, fill=target))+geom_histogram(col="black")+
+  xlab("Thalach number")+ylab("total Number of individuals")+labs(fill="Heart Diseases")+facet_wrap(~cp)
+
+ggplot(heart, aes(x=thalach, fill=target))+geom_histogram(col="black")+
+  xlab("Thalach number")+ylab("total Number of individuals")+labs(fill="Heart Diseases")+facet_wrap(~fbs+cp)+
+  ggtitle("Diabetes status and Chest Pain")
+
+
+# Lets check now Excerise Induced Angina
+
+str(heart$exang)
+table(heart$exang)
+
+
+# Lets check  its association with heart dieases and other variables
+ggplot(heart, aes(x=exang, fill=target))+geom_bar(col="black")+
+      xlab("Excerise Induced Angina")+ylab("Total Number of Individuals")
+
+ggplot(heart, aes(x=exang, fill=target))+geom_bar(col="black")+
+  xlab("Excerise Induced Angina")+ylab("Total Number of Individuals")+facet_wrap(~cp+sex)
+
+
+
+# Lets now analyze the Old Peak 
+str(heart$oldpeak)
+summary(heart$oldpeak)
+
+# Check its distribution and association with other variables.
+ggplot(heart, aes(x=oldpeak, fill=target))+geom_histogram(col="black")+
+      xlab("Old Peak")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")
+
+
+ggplot(heart, aes(x=oldpeak, fill=target))+geom_histogram(col="black")+
+  xlab("Old Peak")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")+
+  facet_wrap(~fbs+cp)
+
+
+# Lets now analyze the slope 
+str(heart$slope)
+table(heart$slope)
+
+
+# Lets check its association with heart diseases 
+ggplot(heart, aes(x=slope, fill=target))+geom_bar(col="black")+
+  xlab("Slope Level")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")+
+  geom_text(stat = "count", aes(label=..count..), position = position_stack(0.5), size=4)
+
+
+ggplot(heart, aes(x=slope, fill=target))+geom_bar(col="black")+
+  xlab("Slope Level")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")+
+  geom_text(stat = "count", aes(label=..count..), position = position_stack(0.5), size=4)+
+  facet_wrap(~cp)
+
+
+# Lets now analyze the ca
+str(heart$ca)
+table(heart$ca)
+
+
+# Lets plot it 
+ggplot(heart, aes(x=ca, fill=target))+geom_bar(col="black")+
+      geom_text(stat = "count", aes(label=..count..), position = position_stack(0.5), size=4)+
+      xlab("Ca level")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")
+
+
+ggplot(heart, aes(x=ca, fill=target))+geom_bar(col="black")+
+  geom_text(stat = "count", aes(label=..count..), position = position_stack(0.5), size=4)+
+  xlab("Ca level")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")+
+  facet_wrap(~cp)
+
+
+# Lests analyze the our final parameter thal
+str(heart$thal)
+
+heart$thal <- as.factor(heart$thal)
+table (heart$thal)
+#Let check its distribution
+ggplot(heart, aes(x=thal))+geom_bar(fill="red", col="black")+
+  geom_text(stat = "count", aes(label=..count..), position = position_stack(0.5), size=4)+
+  xlab("Thal level")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")
+
+
+ggplot(heart, aes(x=thal, fill=target))+geom_bar( col="black")+
+  geom_text(stat = "count", aes(label=..count..), position = position_stack(0.5), size=4)+
+  xlab("Thal level")+ylab("Total Number of Individuals")+labs("Heart Diseases Status")+
+  facet_wrap(~cp)
+
+
+########################################################################################
+#                                                                                      #  
+#                                                                                      #  
+#                     Diseases Modeling Using Random Forest Algorithm                  #
+#                                 Feature Selection                                    #
+#                                                                                      #
+########################################################################################
+
+
+library(randomForest)
+
+# Spliting Up the data between train and test and setting label
+
+rf.train.1 <- heart[1:303, c("ï..age", "cp")]
+rf.label <-  heart$target[1:303]
+
+
+# Lets train our model 1
+set.seed(1234)
+rf.1 <- randomForest(x=rf.train.1, y=rf.label, importance = TRUE, ntree=2000)
+rf.1
+varImpPlot(rf.1)
+
+# Lets train our model 2
+rf.train.2 <- heart[1:303, c("cp", "ï..age", "trestbps")]
+set.seed(1234)
+rf.2 <- randomForest(x=rf.train.2, y=rf.label, importance = TRUE, ntree=2000)
+rf.2
+varImpPlot(rf.2)
+
+# Lets train our model 3 
+rf.train.3 <- heart[1:303, c("cp", "trestbps")]
+set.seed(1234)
+rf.3 <- randomForest(x=rf.train.3, y=rf.label, importance = TRUE, ntree=2000)
+rf.3
+varImpPlot(rf.3)
+
+# Lets train our model 4 
+rf.train.4 <- heart[1:303, c("cp","chol")]
+set.seed(1234)
+rf.4 <- randomForest(x=rf.train.4, y=rf.label, importance = TRUE, ntree=2000)
+rf.4
+varImpPlot(rf.4)
+
+# Lets train our model 5 
+rf.train.5 <- heart[1:303, c("cp","chol", "fbs")]
+set.seed(1234)
+rf.5 <- randomForest(x=rf.train.5, y=rf.label, importance = TRUE, ntree=2000)
+rf.5
+varImpPlot(rf.5)
+
+# Lets train our model 6
+rf.train.6 <- heart[1:303, c("cp","chol", "fbs", "restecg", "thalach")]
+set.seed(1234)
+rf.6 <- randomForest(x=rf.train.6, y=rf.label, importance = TRUE, ntree=2000)
+rf.6
+varImpPlot(rf.6)
+
+
+# Lets train our model 7
+rf.train.7 <- heart[1:303, c("cp", "fbs", "restecg", "thalach")]
+set.seed(1234)
+rf.7 <- randomForest(x=rf.train.7, y=rf.label, importance = TRUE, ntree=2000)
+rf.7
+varImpPlot(rf.7)
+
+
+# Lets train our model 8
+rf.train.8 <- heart[1:303, c("cp", "thalach", "exang")]
+set.seed(1234)
+rf.8 <- randomForest(x=rf.train.8, y=rf.label, importance = TRUE, ntree=2000)
+rf.8
+varImpPlot(rf.8)
+
+
+# Lets train our model 9
+rf.train.9 <- heart[1:303, c("cp", "thalach", "exang", "oldpeak", "slope", "ca","thal")]
+set.seed(1234)
+rf.9 <- randomForest(x=rf.train.9, y=rf.label, importance = TRUE, ntree=2000)
+rf.9
+varImpPlot(rf.9)
+
+########################################################################################
+#                                                                                      #  
+#                                                                                      #  
+#                                    Testing Model                                     #
+#                                 Feature Selection                                    #
+#                                                                                      #
+########################################################################################
+
+
+heart.test1 <- heart[1:303, c("cp", "thalach", "exang", "oldpeak", "slope", "ca","thal")]
+
+
+
+# Lets make predictions
+rf.9.preds <- predict(rf.9, heart.test1)
+table(rf.9.preds)
+
+table(heart$target)
+
+
+
+
+table(heart$target[1:303])
+
+
+
+
+########################################################################################
+#                                                                                      #  
+#                                                                                      #  
+#                                 Cross Validation                                     #
+#                                 Feature Selection                                    #
+#                                                                                      #
+########################################################################################
+
+
+
+# For cross validation, the caret package will be used. 
+
+# In the first step, multifold models will be generated 
+set.seed(23456)
+cv.10.folds <- createMultiFolds(rf.label, k=10, times = 20)
+
+
+# Now lets check the startification
+table(rf.label)
+
+table(rf.label[cv.10.folds[[33]]])
+
+# Now lets the caret trainControl
+ctrl.1 <- trainControl(method = "repeatedcv", number = 10, repeats = 10,
+                       index = cv.10.folds)
+
+#  now lets set the cores using dSNOW package
+
+c1 <- makeCluster(3, type = "SOCK")
+registerDoSNOW(c1)
+
+
+# Now lets start 10 fold training 
+
+set.seed(23456)
+rf.9.cv.10 <- train(x=rf.train.9, y=rf.label, method = "rf", tuneLength = 3, ntree=2000,
+                    trControl = ctrl.1)
+stopCluster(c1)
+rf.9.cv.10
+
+
+# After 10 fold analysis let do 5 fold analysis to check more accuracy. 
+
+# In the first step, multifold models will be generated 
+set.seed(23456)
+cv.5.folds <- createMultiFolds(rf.label, k=5, times = 20)
+
+
+# Now lets check the startification
+table(rf.label)
+
+table(rf.label[cv.5.folds[[33]]])
+
+# Now lets the caret trainControl
+ctrl.2 <- trainControl(method = "repeatedcv", number = 5, repeats = 10,
+                       index = cv.5.folds)
+
+#  now lets set the cores using dSNOW package
+
+c1 <- makeCluster(3, type = "SOCK")
+registerDoSNOW(c1)
+
+
+# Now lets start 5 fold training 
+
+set.seed(23456)
+rf.9.cv.5 <- train(x=rf.train.9, y=rf.label, method = "rf", tuneLength = 3, ntree=2000,
+                    trControl = ctrl.2)
+stopCluster(c1)
+rf.9.cv.5
+
+
+# Lets have 3 fold cross validation
+set.seed(23456)
+cv.3.folds <- createMultiFolds(rf.label, k=3, times = 20)
+
+
+# Now lets check the startification
+table(rf.label)
+
+table(rf.label[cv.3.folds[[33]]])
+
+# Now lets the caret trainControl
+ctrl.3 <- trainControl(method = "repeatedcv", number = 3, repeats = 10,
+                       index = cv.3.folds)
+
+#  now lets set the cores using dSNOW package
+
+c1 <- makeCluster(3, type = "SOCK")
+registerDoSNOW(c1)
+
+
+# Now lets start 5 fold training 
+
+set.seed(23456)
+rf.9.cv.3 <- train(x=rf.train.9, y=rf.label, method = "rf", tuneLength = 3, ntree=2000,
+                   trControl = ctrl.3)
+stopCluster(c1)
+rf.9.cv.3
+
+
+# Lets have the predictions again with 10fold training 
+
+rf.9.cv.10.preds <- predict(rf.9.cv.10, heart.test1)
+table(rf.9.preds)
+
+table(heart$target)
+
+
+table(heart$target[1:303])
+
+
+```
+
