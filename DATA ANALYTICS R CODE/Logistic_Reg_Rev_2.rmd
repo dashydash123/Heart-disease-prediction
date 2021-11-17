@@ -1,0 +1,110 @@
+---
+title: 'DATA ANALYTICS IN R FOR HEART DISEASE PREDICTION REV 2'
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(caTools)
+```
+
+## Import Dataset
+
+```{r}
+df = read.csv("heart.csv", sep = ",")
+head(df)
+nrow(df)
+```
+## Dataset Exploration
+
+```{r}
+summary(df)
+```
+
+```{r}
+ggplot(df, aes(x=chol, y=trestbps)) + geom_point(aes(col=target))
+```
+
+```{r}
+ggplot(df, aes(x=chol, y=trestbps))+geom_point(aes(col=target, size=oldpeak))+ 
+  geom_smooth(method="loess", se=F) + xlim(c(100, 430)) + ylim(c(75, 200)) + 
+  labs(subtitle="trestbps Vs chol", y="trestbps", x="chol", 
+       title="Scatterplot", caption = "Source: midwest", bins = 30)
+```
+
+## Calculation Baseline Model
+
+```{r}
+table (df$target)
+```
+
+## 0 -> No Disease, 1 -> Has Disease
+## Probalility of Heart Disease
+
+```{r}
+probablity_heart_diease = 165 / 303
+probablity_heart_diease
+```
+
+## Splitting Dataset into Train and Test set
+
+```{r}
+set.seed(123)
+split = sample.split(df$target, SplitRatio = 0.75)
+split
+```
+
+```{r}
+qTrain = subset(df, split == TRUE)
+qTest = subset(df, split == FALSE)
+nrow(qTrain)
+nrow(qTest)
+```
+
+## Dependent Variable -> Target
+## Independent Variable -> age, trestbps, chol, fbs, restecg, thalach, 
+##    exang, oldpeak, slope, ca, and thal
+
+## Logistic Regression Model
+
+```{r}
+dflog = glm(target ~ target+ï..age+trestbps+chol+fbs+restecg+thalach+
+              exang+oldpeak+slope+ca+thal,data=qTrain,family = binomial)
+summary(dflog)
+```
+
+## Removing Varialbes based on Significance Level
+
+```{r}
+dflog2=glm(target ~ ï..age+sex+cp+trestbps+chol+fbs+thalach+exang
+           +oldpeak+slope+ca+thal,data=qTrain,family = binomial)
+summary(dflog2)
+```
+
+## Removing restecg, fbs, slope, exang
+
+```{r}
+dflog3 = lm(target ~ sex+cp+trestbps+chol+thalach+oldpeak+ca+thal,
+            data=qTrain,family = binomial)
+summary(dflog3)
+```
+
+## Accuracy
+
+```{r}
+pred = predict(dflog, newdata = qTest, type = "response")
+table(qTest$target, pred >= 0.7)
+```
+```{r}
+accuracy = (28 + 26) / 75
+accuracy
+```
+
+## Accuracy of testing 72%
