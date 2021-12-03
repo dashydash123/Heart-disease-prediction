@@ -588,3 +588,55 @@ table(heart$target[1:303])
 
 ```
 
+# Feature Selection
+
+```{r}
+
+# ensure results are repeatable
+set.seed(10)
+# load the library
+library(mlbench)
+library(caret)
+# load the dataset
+data(heart)
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# train the model
+fsmodel <- train(target~., data=heart, method="lvq", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(fsmodel, scale=FALSE)
+# summarize importance
+print(importance)
+# plot importance
+plot(importance)
+
+```
+
+## we can see that only cp and thalach has the highest importance on prediciting the outcome with each having an importance of 0.75.
+## oldpeak and ca are close behind cp and thalach and have importance in the range of 72 to 74.
+
+
+# RFE Recursive feature elimination
+
+```{r}
+
+# ensure the results are repeatable
+set.seed(10)
+# define the control using a random forest selection function
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(heart[,1:13], heart[,14], sizes=c(1:13), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+```
+## from this graph we can infer that when we are using 3 attribute/variables we get average accuracy
+## compared to the base model.
+
+## when we use 9 variable we are able to get comparable accuracy compared to that of base model
+
+## When we use all 13 variables we get the base model with highest accuracy.
